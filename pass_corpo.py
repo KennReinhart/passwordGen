@@ -5,9 +5,12 @@ import string
 import math
 from typing import Iterable
 
+#---------------
+# Character sets
+#---------------
 SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>?/"
 
-def pool_from_flags(use_upper:bool,use_lower:bool, use_digits:bool, use_symbols:bool) -> str:
+def build_pool(use_upper:bool, use_lower:bool, use_digits:bool, use_symbols:bool) -> str:
     pool = ''
     if use_upper:
         pool += string.ascii_uppercase
@@ -19,18 +22,20 @@ def pool_from_flags(use_upper:bool,use_lower:bool, use_digits:bool, use_symbols:
         pool += SYMBOLS
     return pool
 
-def generate_password(length: int = 16, pool: str | None = None) -> str:
+#-------------------------
+# Password generator logic
+#-------------------------
+def generate_password(length: int , pool: str) -> str:
     if length <= 0:
-        raise ValueError('length must be a positive integer')
-    if pool is None:
-        pool = pool_from_flags(use_upper=True, use_lower=True, use_digits=True, use_symbols=True)
+        raise ValueError('length must be positive')
     if not pool:
         raise ValueError('empty character pool')
 
     return ''.join(secrets.choice(pool) for _ in range(length))
 
-def estimate_entropy_bits(length: int, pool_size: int) -> float:
-    return length * math.log(pool_size)
+def entropy_bits(length: int, pool_size: int) -> float:
+    """Rough estimate"""
+    return length * math.log2(pool_size)
 
 def ensure_policy(password: str, require:Iterable[str]) -> bool:
     """Check that `password` contains at least one char from each pattern in `require` (each pattern is a string of allowed chars)."""
@@ -39,23 +44,28 @@ def ensure_policy(password: str, require:Iterable[str]) -> bool:
             return False
     return True
 
-#print(generate_password(length=14))
+#-------------------------
+# Built-in policies
+#-------------------------
 POLICIES = {
     'nist': {
         'min_length': 12,
-        'require': ["abcdefghijklmnopqrstuvwxyz",
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                    "0123456789"]
+        'require': [string.ascii_lowercase,
+                    string.ascii_uppercase,
+                    string.digits,]
     },
     'strict': {
         'min_length': 14,
-        'require': ["abcdefghijklmnopqrstuvwxyz",
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                    "0123456789",
-                    SYMBOLS]
+        'require': [string.ascii_lowercase,
+                    string.ascii_uppercase,
+                    string.digits,
+                    SYMBOLS,]
     }
 }
 
+#-------------------------
+# Argparser
+#-------------------------
 def parse_args():
     parser = argparse.ArgumentParser(description='Corporate password generator with policy enforcement')
     parser.add_argument('-l','--length', type=int, default=16, help='length of password')
@@ -67,25 +77,29 @@ def parse_args():
     parser.add_argument('--policy', choices=list(POLICIES.keys()), default='strict', help="Policy to use")
     parser.add_argument('--save', type=str, default=None, help="Save generated password")
     parser.add_argument('--copy', action='store_true', help="Copy generated password")
+    parser.add_argument('--verbose', "-v", action='store_true', help="Enable extra logging")
     return parser.parse_args()
 
+#-------------------------
+# Main application logic
+#-------------------------
 def main():
     args = parse_args()
     policy = POLICIES[args.policy]
 
-    if args.length < policy['min_length']:
-        print('Minimum password length must be at least {}'.format(policy['min_length']))
-
-    pool = pool_from_flags(not args.use_upper, not args.use_lower, not args.use_digits, not args.use_symbols)
+    pool = build_pool(not args.use_upper, not args.use_lower, not args.use_digits, not args.use_symbols)
 
     if not pool:
         print('No pool specified', file=sys.stderr)
         sys.exit(2)
 
+    if args.length < policy['min_length']:
+        print('Minimum password length must be at least {}'.format(policy['min_length']))
+
     generated = []
+
     for _ in range(args.count):
-        # naive loop: keep generating until policy satisfied (rare re-rolls only)
-        for _ in range(100):
+        for _ in range(100): # reroll attempts
             pw = generate_password(args.length, pool)
             if ensure_policy(pw, policy.get('require', [])):
                 generated.append(pw)
@@ -94,6 +108,7 @@ def main():
         else:
             print("Failed to generate password after 100 tries", file=sys.stderr)
 
+    # Copy feature
     if args.copy and generated:
         try:
             import pyperclip
@@ -102,11 +117,16 @@ def main():
         except Exception:
             print('[failed to copy last password to clipboard. pip install pyperclip]', file=sys.stderr)
 
+    # Save feature
     if args.save and generated:
         with open(args.save, 'a', encoding='utf-8') as f:
             for pw in generated:
                 f.write(pw + '\n')
         print(f"[saved {len(generated)} passwords to {args.save}]")
 
+    # Extra info
+    if args.verbose:
+        bits = entropy_bits(args.length, len(pool))
+        print(f"[entropy] approx entropy per password: {bits:.2f} bits", file=sys.stderr)
 if __name__ == '__main__':
     main()
