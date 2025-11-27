@@ -128,5 +128,6 @@ def main():
     if args.verbose:
         bits = entropy_bits(args.length, len(pool))
         print(f"[entropy] approx entropy per password: {bits:.2f} bits", file=sys.stderr)
+        
 if __name__ == '__main__':
     main()
