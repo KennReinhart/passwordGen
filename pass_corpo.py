@@ -6,7 +6,7 @@ import math
 from typing import Iterable
 
 #---------------
-# Character sets
+# Corpo character sets
 #---------------
 SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>?/"
 
