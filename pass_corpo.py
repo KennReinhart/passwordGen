@@ -9,6 +9,7 @@ from typing import Iterable
 # Character sets
 #---------------
 SYMBOLS = "!@#$%^&*()-_=+[]{};:,.<>?/"
+
 def build_pool(use_upper:bool, use_lower:bool, use_digits:bool, use_symbols:bool) -> str:
     pool = ''
     if use_upper:
