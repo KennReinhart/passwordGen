@@ -25,9 +25,11 @@ def build_pool(use_upper:bool, use_lower:bool, use_digits:bool, use_symbols:bool
 #-------------------------
 # Password generator logic
 #-------------------------
-def generate_password(length: int , pool: str) -> str:
+def generate_password(length: int = 16 , pool: str | None = None) -> str:
     if length <= 0:
         raise ValueError('length must be positive')
+    if pool is None:
+        pool = string.ascii_letters + string.digits
     if not pool:
         raise ValueError('empty character pool')
 
