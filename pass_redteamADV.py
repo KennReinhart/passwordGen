@@ -4,6 +4,8 @@ import json
 import secrets
 import string
 import hashlib
+import random
+import itertools
 import os
 
 
@@ -60,10 +62,9 @@ def leet(word: str) -> str:
 # -------------------------------
 def case_variants(word: str):
     return [
-        word,
         word.lower(),
         word.upper(),
-        word.title()
+        word.capitalize()
     ]
 
 # -------------------------------
@@ -90,14 +91,24 @@ def load_profile(path):
 # -------------------------------
 # COMBINATION BUILDER
 # -------------------------------
-def build_combos(name, nick, dob):
+def build_combos(*words):
     """Return the 4 standard combos."""
-    return [
-        name + dob,
-        nick + dob,
-        name + nick,
-        name + nick + dob
-    ]
+    # Generate permutations of words
+    combos = set()
+    for r in range(1, len(words) + 1):
+        for perm in itertools.permutations(words, r):
+            combos.add("".join(perm))
+
+    # Apply random case variants
+    final = set()
+    for c in combos:
+        for variant in case_variants(c):
+            final.add(variant)
+
+    # Shuffle output
+    final = list(final)
+    random.shuffle(final)
+    return final
 
 # -------------------------------
 # MAIN
@@ -111,8 +122,10 @@ def main():
 
     # user data
     parser.add_argument("--name", type=str, help="Full name")
-    parser.add_argument("--nick", type=str, help="Nickname")
-    parser.add_argument("--dob", type=str, help="Birthdate DDMMYYYY")
+    parser.add_argument("--email", type=str, help="Email address")
+    parser.add_argument("--dob", type=str, help="Date of Birth")
+    parser.add_argument("--mob", type=str, help="Month of birth")
+    parser.add_argument("--yob", type=str, help="Year of birth")
 
     # mutate options
     parser.add_argument("--leet", action="store_true")
@@ -132,8 +145,10 @@ def main():
     if args.load_profile:
         p = load_profile(args.load_profile)
         args.name = p.get("name")
-        args.nick = p.get("nick")
+        args.email = p.get("email")
         args.dob = p.get("dob")
+        args.mob = p.get("mob")
+        args.yob = p.get("yob")
 
     # MASK MODE
     if args.mask:
@@ -152,22 +167,30 @@ def main():
     if not args.name:
         args.name = input("Full Name: ").strip()
 
-    if not args.nick:
-        args.nick = input("Nickname: ").strip()
+    if not args.email:
+        args.email = input("Email: ").strip()
 
     if not args.dob:
-        args.dob = input("Birthdate (DDMMYYYY): ").strip()
+        args.dob = input("Date of Birth): ").strip()
+
+    if not args.mob:
+        args.mob = input("Month of Birth): ").strip()
+
+    if not args.yob:
+        args.yob = input("Year of Birth): ").strip()
 
     name = args.name.replace(" ", "")
-    nick = args.nick.replace(" ", "")
+    email = args.email.replace(" ", "")
     dob = args.dob.replace(" ", "")
+    mob = args.mob.replace(" ", "")
+    yob = args.yob.replace(" ", "")
 
     # SAVE PROFILE IF ASKED
     if args.save_profile:
-        save_profile(args.save_profile, name, nick, dob)
+        save_profile(args.save_profile, name, email, yob)
 
     # Build combinations
-    combos = build_combos(name, nick, dob)
+    combos = build_combos(name, email, dob, mob, yob)
 
     # Apply one-shot mangling
     final = []
@@ -207,4 +230,4 @@ if __name__ == "__main__":
     main()
 
 #in terminal
-# python pass_redteamADV.py --name kenreinhart --nick Kent --dob 1990 --leet --hashes
+# python pass_redteamADV.py --name kenreinhart --email reinhartplaysgames@gmail.com --dob 1990 --leet --hashes
