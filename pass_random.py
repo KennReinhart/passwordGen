@@ -32,9 +32,9 @@ def combine_randomized(*words):
     return final
 
 # Example harmless usage:
-name = "andi"
+name = "blank"
 dob = "12031995"
-nick = "ace"
+nick = "blankk"
 
 print("Randomized combinations:")
 for c in combine_randomized(name, dob, nick)[:20]:  # just show 20 examples
