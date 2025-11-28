@@ -40,36 +40,31 @@ def generate_mask(mask: str) -> str:
 # SIMPLE ONE-SHOT MANGLE ENGINE
 # -------------------------------
 LEET_MAP = {
-    "a": "@", "A": "@",
-    "e": "3", "E": "3",
-    "i": "1", "I": "1",
-    "o": "0", "O": "0",
-    "s": "$", "S": "$",
-    "t": "7", "T": "7",
+    "a": "@",
+    "e": "3",
+    "i": "1",
+    "o": "0",
+    "s": "$",
+    "t": "7",
 }
 
 def leet(word: str) -> str:
-    """One-shot leetspeak mangling."""
-    for k, v in LEET_MAP.items():
-        word = word.replace(k, v)
-    return word
+    out = ""
+    for ch in word:
+        low = ch.lower()
+        out += LEET_MAP.get(low, ch)
+    return out
 
-
-def uppercase(word: str) -> str:
-    return word.upper()
-
-
-def lowercase(word: str) -> str:
-    return word.lower()
-
-
-def titlecase(word: str) -> str:
-    return word.title()
-
-
-def reverse(word: str) -> str:
-    return word[::-1]
-
+# -------------------------------
+# CASE VARIANTS (AUTO)
+# -------------------------------
+def case_variants(word: str):
+    return [
+        word,
+        word.lower(),
+        word.upper(),
+        word.title()
+    ]
 
 # -------------------------------
 # HASHING FOR OSINT / CORRELATION
@@ -80,7 +75,6 @@ def compute_hashes(word: str):
         "sha1": hashlib.sha1(word.encode()).hexdigest(),
         "sha256": hashlib.sha256(word.encode()).hexdigest()
     }
-
 
 # -------------------------------
 # PROFILE SYSTEM
@@ -93,7 +87,6 @@ def load_profile(path):
     with open(path) as f:
         return json.load(f)
 
-
 # -------------------------------
 # COMBINATION BUILDER
 # -------------------------------
@@ -105,7 +98,6 @@ def build_combos(name, nick, dob):
         name + nick,
         name + nick + dob
     ]
-
 
 # -------------------------------
 # MAIN
@@ -124,9 +116,6 @@ def main():
 
     # mutate options
     parser.add_argument("--leet", action="store_true")
-    parser.add_argument("--upper", action="store_true")
-    parser.add_argument("--lower", action="store_true")
-    parser.add_argument("--title", action="store_true")
     parser.add_argument("--reverse", action="store_true")
 
     # mask mode
@@ -148,8 +137,15 @@ def main():
 
     # MASK MODE
     if args.mask:
+        print("\nGenerated passwords:")
         for _ in range(args.count):
-            print(generate_mask(args.mask))
+            pw = generate_mask(args.mask)
+            print("  " + pw)
+            if args.hashes:
+                h = compute_hashes(pw)
+                print("    MD5:    " + h["md5"])
+                print("    SHA1:   " + h["sha1"])
+                print("    SHA256: " + h["sha256"])
         return
 
     # INTERACTIVE INPUT
@@ -176,20 +172,19 @@ def main():
     # Apply one-shot mangling
     final = []
     for c in combos:
-        word = c
+        variants = case_variants(c) # lower, upper, tittle, original
 
-        if args.lower:
-            word = lowercase(word)
-        if args.upper:
-            word = uppercase(word)
-        if args.title:
-            word = titlecase(word)
-        if args.leet:
-            word = leet(word)
-        if args.reverse:
-            word = reverse(word)
+        for v in variants:
+            w = v
+            if args.leet:
+                w = leet(w)
+            if args.reverse:
+                w = w[::-1]
 
-        final.append(word)
+            final.append(w)
+
+    # Remove duplicates
+    final = list(dict.fromkeys(final))
 
     # Output
     print("\nGenerated passwords:")
@@ -208,6 +203,8 @@ def main():
                 f.write(w + "\n")
         print(f"\nSaved to {args.output}")
 
-
 if __name__ == "__main__":
     main()
+
+#in terminal
+# python pass_redteamADV.py --name kenreinhart --nick Kent --dob 1990 --leet --hashes
